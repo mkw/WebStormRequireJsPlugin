@@ -1,7 +1,6 @@
 package requirejs;
 
-import com.intellij.javascript.nodejs.NodeCoreModulesManager;
-import com.intellij.javascript.nodejs.NodeModuleSearchUtil;
+import com.intellij.javascript.nodejs.library.NodeJsCoreLibraryManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiElement;
@@ -157,19 +156,21 @@ public class Path {
 
     @Nullable
     protected PsiElement probeResolveRequireAlias() {
-        String requireMapModule = FileUtils.removeExt(element.getContainingFile().getVirtualFile().getPath().replace(
-                component.getWebDir(this.getElementFile()).getPath() + '/',
-                ""
-        ), ".js");
+        VirtualFile virtualFile = element.getContainingFile().getVirtualFile();
+        if (virtualFile != null) {
+            String requireMapModule = FileUtils.removeExt(virtualFile.getPath().replace(
+                    component.getWebDir(this.getElementFile()).getPath() + '/',
+                    ""
+            ), ".js");
 
-        RequirePathAlias alias = component.requireMap.getAliasByModule(requireMapModule, this.getPath());
-        if (null != alias) {
-            VirtualFile targetFile = FileUtils.findFileByPath(component.getWebDir(getElementFile()), alias.path);
-            if (null != targetFile) {
-                return getPsiManager().findFile(targetFile);
+            RequirePathAlias alias = component.requireMap.getAliasByModule(requireMapModule, this.getPath());
+            if (null != alias) {
+                VirtualFile targetFile = FileUtils.findFileByPath(component.getWebDir(getElementFile()), alias.path);
+                if (null != targetFile) {
+                    return getPsiManager().findFile(targetFile);
+                }
             }
         }
-
         return null;
     }
 
@@ -196,7 +197,7 @@ public class Path {
                     return this.getContainingFile();
                 }
 
-                if (NodeCoreModulesManager.isCoreModuleName(this.getPath())) {
+                if (NodeJsCoreLibraryManager.isCoreModuleName(this.getPath())) {
                     return this.getContainingFile();
                 }
 

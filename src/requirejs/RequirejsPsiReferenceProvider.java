@@ -5,7 +5,9 @@ import com.intellij.lang.javascript.psi.JSArrayLiteralExpression;
 import com.intellij.lang.javascript.psi.JSCallExpression;
 import com.intellij.lang.javascript.psi.JSReferenceExpression;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.PsiReferenceProvider;
@@ -14,9 +16,6 @@ import org.jetbrains.annotations.NotNull;
 import requirejs.settings.Settings;
 
 public class RequirejsPsiReferenceProvider extends PsiReferenceProvider {
-
-    protected Project project;
-    public Settings settings;
 
     @NotNull
     @Override
@@ -27,13 +26,28 @@ public class RequirejsPsiReferenceProvider extends PsiReferenceProvider {
             return PsiReference.EMPTY_ARRAY;
         }
 
-        String path = psiElement.getText();
-        if (isRequireCall(psiElement) || isDefineFirstCollection(psiElement)) {
-            PsiReference ref = new RequirejsReference(psiElement, new TextRange(1, path.length() - 1));
-            return new PsiReference[] {ref};
+        // Only provided references for files inside the public directory
+        String publicPath = getContentRoot(psiElement.getProject()).getPath() + '/' +
+                Settings.getInstance(psiElement.getProject()).publicPath;
+        VirtualFile virtualFile = psiElement.getContainingFile().getVirtualFile();
+        if (virtualFile == null || virtualFile.getPath().startsWith(publicPath)) {
+            String path = psiElement.getText();
+            if (isRequireCall(psiElement) || isDefineFirstCollection(psiElement)) {
+                PsiReference ref = new RequirejsReference(psiElement, new TextRange(1, path.length() - 1));
+                return new PsiReference[] {ref};
+            }
         }
 
         return new PsiReference[0];
+    }
+
+    public VirtualFile getContentRoot(Project project) {
+        VirtualFile[] contentRoots = ProjectRootManager.getInstance(project).getContentRoots();
+        if (contentRoots.length > 0) {
+            return contentRoots[0];
+        } else {
+            return project.getBaseDir();
+        }
     }
 
     public boolean isRequireCall(PsiElement element) {
